@@ -1,0 +1,83 @@
+<project
+    xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <packaging>jar</packaging>
+
+    <groupId>tech.ydb.performance</groupId>
+    <artifactId>ydb-perf-app</artifactId>
+    <version>1.0.0</version>
+
+    <name>YDB Perf test app</name>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+
+        <ydb-sdk-v1.version>1.14.5</ydb-sdk-v1.version>
+        <ydb-sdk-v2.version>2.1.0-SNAPSHOT</ydb-sdk-v2.version>
+
+        <log4j.version>2.17.2</log4j.version>
+        <jopt.simple.version>5.0.4</jopt.simple.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.yandex.ydb</groupId>
+            <artifactId>ydb-sdk-table</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>tech.ydb</groupId>
+            <artifactId>ydb-sdk-table</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>net.sf.jopt-simple</groupId>
+            <artifactId>jopt-simple</artifactId>
+            <version>${jopt.simple.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+    </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.yandex.ydb</groupId>
+                <artifactId>ydb-sdk-core</artifactId>
+                <version>${ydb-sdk-v1.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.yandex.ydb</groupId>
+                <artifactId>ydb-sdk-table</artifactId>
+                <version>${ydb-sdk-v1.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.yandex.ydb</groupId>
+                <artifactId>ydb-sdk-auth-iam</artifactId>
+                <version>${ydb-sdk-v1.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>tech.ydb</groupId>
+                <artifactId>ydb-sdk-bom</artifactId>
+                <version>${ydb-sdk-v2.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <finalName>ydb-slo-app</finalName>
+    </build>
+</project>
