@@ -12,4 +12,12 @@ public class AppRecord {
         this.uuid = uuid;
         this.payload = payload;
     }
+
+    public String uuid() {
+        return this.uuid;
+    }
+
+    public byte[] payload() {
+        return this.payload;
+    }
 }

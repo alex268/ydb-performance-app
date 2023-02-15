@@ -5,6 +5,9 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import tech.ydb.performance.api.Workload;
+import tech.ydb.performance.api.YdbRuntime;
+
 /**
  *
  * @author Aleksandr Gorshenin
@@ -23,17 +26,25 @@ public class SimpleApp implements Runnable, AutoCloseable {
     }
 
     private final AppConfig config;
+    private final YdbRuntime ydb;
 
     public SimpleApp(AppConfig config) {
         this.config = config;
+        this.ydb = AppFactory.createYdbRuntime(config);
     }
 
     @Override
     public void run() {
+        Workload workload = AppFactory.createWorkload(config, ydb);
+        workload.run();
 
+        workload.metrics().forEach(m -> {
+            logger.info("workload metric {} = {}", m.name(), m.value());
+        });
     }
 
     @Override
     public void close() {
+        ydb.close();
     }
 }
