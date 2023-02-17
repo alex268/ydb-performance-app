@@ -2,9 +2,10 @@ package tech.ydb.performance;
 
 import tech.ydb.performance.api.Workload;
 import tech.ydb.performance.api.YdbRuntime;
-import tech.ydb.performance.impl.LoadWorkload;
 import tech.ydb.performance.impl.YdbRuntimeV1;
 import tech.ydb.performance.impl.YdbRuntimeV2;
+import tech.ydb.performance.workload.LoadWorkload;
+import tech.ydb.performance.workload.ReadWorkload;
 
 import static tech.ydb.performance.AppConfig.Cmd.REACT;
 
@@ -20,6 +21,7 @@ public class AppFactory {
             case LOAD:
                 return new LoadWorkload(config, runtime);
             case READ:
+                return new ReadWorkload(config, runtime);
             case REACT:
             default:
                 throw new RuntimeException("Unimplemented");

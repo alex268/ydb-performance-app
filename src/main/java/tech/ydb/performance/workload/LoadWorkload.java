@@ -1,4 +1,4 @@
-package tech.ydb.performance.impl;
+package tech.ydb.performance.workload;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +18,7 @@ import tech.ydb.performance.api.AppRecord;
 import tech.ydb.performance.api.Metric;
 import tech.ydb.performance.api.Workload;
 import tech.ydb.performance.api.YdbRuntime;
+import tech.ydb.performance.impl.TimingMetric;
 
 /**
  *
@@ -37,7 +38,7 @@ public class LoadWorkload implements Workload {
 
     @Override
     public List<Metric> metrics() {
-        return timing.toMetrics();
+        return timing.toMetrics("LOAD_");
     }
 
     @Override

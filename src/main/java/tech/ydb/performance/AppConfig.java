@@ -54,6 +54,12 @@ public class AppConfig {
             .ofType(Integer.class)
             .defaultsTo(500);
 
+    private final static OptionSpec<Long> OPERATION_COUNT = PARSER
+            .accepts("operationcount")
+            .withRequiredArg()
+            .ofType(Long.class)
+            .defaultsTo(100_000l);
+
     private final static OptionSpec<Boolean> USE_YDB_SDK_V1 = PARSER
             .accepts("sdk-v1")
             .withRequiredArg()
@@ -67,6 +73,7 @@ public class AppConfig {
     private final int recordCount;
     private final int recordSize;
     private final int batchSize;
+    private final long operationsCount;
     private final boolean useSdkV1;
 
     private AppConfig(String endpoint, Cmd cmd, OptionSet options) {
@@ -77,6 +84,7 @@ public class AppConfig {
         this.recordCount = options.valueOf(RECORD_COUNT);
         this.recordSize = options.valueOf(RECORD_SIZE);
         this.batchSize = options.valueOf(BATCH_SIZE);
+        this.operationsCount = options.valueOf(OPERATION_COUNT);
         this.useSdkV1 = options.valueOf(USE_YDB_SDK_V1);
     }
 
@@ -108,6 +116,10 @@ public class AppConfig {
         return this.batchSize;
     }
 
+    public long operationsCount() {
+        return this.operationsCount;
+    }
+
     public boolean useSdkV1() {
         return this.useSdkV1;
     }
@@ -117,7 +129,10 @@ public class AppConfig {
         List<?> nonOption = options.nonOptionArguments();
 
         if (nonOption.isEmpty() || nonOption.size() > 2) {
+
             try {
+                System.err.println("Wrong count of free options");
+                nonOption.forEach(o -> System.err.println(" >" + o));
                 System.err.println("Usage: java -jar ydb-perf-app.jar <options> <endpoint> <cmd>");
                 PARSER.printHelpOn(System.err);
                 System.exit(1);

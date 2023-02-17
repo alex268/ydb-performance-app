@@ -29,13 +29,13 @@ public class TimingMetric {
         count += other.count;
     }
 
-    public List<Metric> toMetrics() {
+    public List<Metric> toMetrics(String prefix) {
         return Arrays.asList(
-                new Metric("TOTAL_COUNT", count),
-                new Metric("TOTAL_MS", 1e-6d * summaryTime),
-                new Metric("AVG_MS", 1e-6d * summaryTime / count),
-                new Metric("MIN_MS", 1e-6d * minTime),
-                new Metric("MAX_MS", 1e-6d * maxTime)
+                new Metric(prefix + "TOTAL_COUNT", count),
+                new Metric(prefix + "TOTAL_MS", 1e-6d * summaryTime),
+                new Metric(prefix + "AVG_MS", 1e-6d * summaryTime / count),
+                new Metric(prefix + "MIN_MS", 1e-6d * minTime),
+                new Metric(prefix + "MAX_MS", 1e-6d * maxTime)
         );
     }
 }

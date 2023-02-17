@@ -8,8 +8,10 @@ import java.util.concurrent.CompletableFuture;
  * @author Aleksandr Gorshenin
  */
 public interface YdbRuntime extends AutoCloseable {
-    public interface YdbSession {
+    public interface YdbSession extends AutoCloseable  {
         public CompletableFuture<AppRecord> read(String uuid);
+
+        @Override
         public void close();
     }
 

@@ -1,4 +1,4 @@
-package tech.ydb.performance.impl;
+package tech.ydb.performance.workload;
 
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
