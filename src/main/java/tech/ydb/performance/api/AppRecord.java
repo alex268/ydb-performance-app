@@ -1,5 +1,8 @@
 package tech.ydb.performance.api;
 
+import java.util.Random;
+import java.util.UUID;
+
 /**
  *
  * @author Aleksandr Gorshenin
@@ -19,5 +22,15 @@ public class AppRecord {
 
     public byte[] payload() {
         return this.payload;
+    }
+
+    public static AppRecord createByIndex(long index, int recordSize) {
+        Random rnd = new Random(index * 31 + 21);
+
+        byte[] payload = new byte[recordSize];
+        rnd.nextBytes(payload);
+        UUID uuid = UUID.nameUUIDFromBytes(payload);
+
+        return new AppRecord(uuid.toString(), payload);
     }
 }

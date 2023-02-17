@@ -10,14 +10,14 @@ import java.util.concurrent.CompletableFuture;
 public interface YdbRuntime extends AutoCloseable {
     public interface YdbSession {
         public CompletableFuture<AppRecord> read(String uuid);
-        public CompletableFuture<Boolean> bulkUpsert(List<AppRecord> records);
-
         public void close();
     }
 
     public void createTable();
 
     public CompletableFuture<YdbSession> createSession();
+
+    public CompletableFuture<Boolean> bulkUpsert(List<AppRecord> records);
 
     @Override
     public void close();

@@ -64,6 +64,22 @@ public class YdbRuntimeV2 implements YdbRuntime {
     }
 
     @Override
+    public CompletableFuture<Boolean> bulkUpsert(List<AppRecord> records) {
+        StructType type = StructType.of(
+                "uuid", PrimitiveType.Text,
+                "payload", PrimitiveType.Bytes
+        );
+
+        List<Value<?>> values = records.stream().map(r -> type.newValue(
+                "uuid", PrimitiveValue.newText(r.uuid()),
+                "payload", PrimitiveValue.newBytes(r.payload())
+        )).collect(Collectors.toList());
+
+        return retryCtx.supplyStatus(s -> s.executeBulkUpsert(tablePath, ListType.of(type).newValue(values)))
+                .thenApply(Status::isSuccess);
+    }
+
+    @Override
     public void close() {
         tableClient.close();
         transport.close();
@@ -98,22 +114,6 @@ public class YdbRuntimeV2 implements YdbRuntime {
             String uuid = rs.getColumn("uuid").getText();
             byte[] payload = rs.getColumn("payload").getBytes();
             return new AppRecord(uuid, payload);
-        }
-
-        @Override
-        public CompletableFuture<Boolean> bulkUpsert(List<AppRecord> records) {
-            StructType type = StructType.of(
-                    "uuid", PrimitiveType.Text,
-                    "payload", PrimitiveType.Bytes
-            );
-
-            List<Value<?>> values = records.stream().map(r -> type.newValue(
-                    "uuid", PrimitiveValue.newText(r.uuid()),
-                    "payload", PrimitiveValue.newBytes(r.payload())
-            )).collect(Collectors.toList());
-
-            return retryCtx.supplyStatus(s -> s.executeBulkUpsert(tablePath, ListType.of(type).newValue(values)))
-                    .thenApply(Status::isSuccess);
         }
 
         @Override

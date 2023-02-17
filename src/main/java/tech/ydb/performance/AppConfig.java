@@ -48,6 +48,12 @@ public class AppConfig {
             .ofType(Integer.class)
             .defaultsTo(100);
 
+    private final static OptionSpec<Integer> BATCH_SIZE = PARSER
+            .accepts("batchsize")
+            .withRequiredArg()
+            .ofType(Integer.class)
+            .defaultsTo(500);
+
     private final static OptionSpec<Boolean> USE_YDB_SDK_V1 = PARSER
             .accepts("sdk-v1")
             .withRequiredArg()
@@ -60,6 +66,7 @@ public class AppConfig {
     private final int threadsCount;
     private final int recordCount;
     private final int recordSize;
+    private final int batchSize;
     private final boolean useSdkV1;
 
     private AppConfig(String endpoint, Cmd cmd, OptionSet options) {
@@ -69,6 +76,7 @@ public class AppConfig {
         this.threadsCount = options.valueOf(THREADS);
         this.recordCount = options.valueOf(RECORD_COUNT);
         this.recordSize = options.valueOf(RECORD_SIZE);
+        this.batchSize = options.valueOf(BATCH_SIZE);
         this.useSdkV1 = options.valueOf(USE_YDB_SDK_V1);
     }
 
@@ -94,6 +102,10 @@ public class AppConfig {
 
     public int recordSize() {
         return this.recordSize;
+    }
+
+    public int batchSize() {
+        return this.batchSize;
     }
 
     public boolean useSdkV1() {
