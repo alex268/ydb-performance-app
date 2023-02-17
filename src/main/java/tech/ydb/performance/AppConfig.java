@@ -40,7 +40,7 @@ public class AppConfig {
             .accepts("recordcount")
             .withRequiredArg()
             .ofType(Integer.class)
-            .defaultsTo(10_000);
+            .defaultsTo(100_000);
 
     private final static OptionSpec<Integer> RECORD_SIZE = PARSER
             .accepts("recordsize")

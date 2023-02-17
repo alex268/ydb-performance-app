@@ -6,8 +6,12 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import tech.ydb.performance.AppConfig;
 import tech.ydb.performance.api.AppRecord;
@@ -20,6 +24,8 @@ import tech.ydb.performance.api.YdbRuntime;
  * @author Aleksandr Gorshenin
  */
 public class LoadWorkload implements Workload {
+    private static final Logger logger = LoggerFactory.getLogger(LoadWorkload.class);
+
     private final AppConfig config;
     private final YdbRuntime ydb;
     private final TimingMetric timing = new TimingMetric();
@@ -36,6 +42,10 @@ public class LoadWorkload implements Workload {
 
     @Override
     public void run() {
+        logger.info("create table...");
+        ydb.createTable();
+
+        logger.info("run load workload with {} threads", config.threadsCount());
         ExecutorService executor = Executors.newFixedThreadPool(config.threadsCount(), new NamedThreadFactory("load"));
         List<CompletableFuture<TimingMetric>> taskTimings = new ArrayList<>();
 
@@ -49,8 +59,19 @@ public class LoadWorkload implements Workload {
             first = last;
         }
 
+        logger.info("wait all tasks...");
+
         // collect all timings
         taskTimings.forEach(future -> timing.record(future.join()));
+
+        try {
+            logger.info("shutdown workload");
+            executor.shutdown();
+            executor.awaitTermination(1, TimeUnit.MINUTES);
+        } catch (InterruptedException ex) {
+            logger.error("interrupted", ex);
+            Thread.currentThread().interrupt();
+        }
     }
 
     private class LoadTask implements Callable<TimingMetric> {

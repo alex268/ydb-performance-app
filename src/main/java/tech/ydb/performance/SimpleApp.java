@@ -16,6 +16,7 @@ public class SimpleApp implements Runnable, AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(SimpleApp.class);
 
     public static void main(String... args) throws IOException {
+        logger.info("start app");
         AppConfig config = AppConfig.parseArgs(args);
         try (SimpleApp app = new SimpleApp(config)) {
             app.run();

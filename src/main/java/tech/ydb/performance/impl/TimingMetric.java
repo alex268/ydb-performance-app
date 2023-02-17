@@ -33,9 +33,9 @@ public class TimingMetric {
         return Arrays.asList(
                 new Metric("TOTAL_COUNT", count),
                 new Metric("TOTAL_MS", 1e-6d * summaryTime),
-                new Metric("AVG_NS", 1.0d * summaryTime / count),
-                new Metric("MIN_NS", minTime),
-                new Metric("MAX_NS", maxTime)
+                new Metric("AVG_MS", 1e-6d * summaryTime / count),
+                new Metric("MIN_MS", 1e-6d * minTime),
+                new Metric("MAX_MS", 1e-6d * maxTime)
         );
     }
 }

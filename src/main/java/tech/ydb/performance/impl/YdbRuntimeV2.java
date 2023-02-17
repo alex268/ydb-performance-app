@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import tech.ydb.auth.iam.CloudAuthHelper;
 import tech.ydb.core.Status;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.performance.AppConfig;
@@ -38,6 +39,7 @@ public class YdbRuntimeV2 implements YdbRuntime {
     public YdbRuntimeV2(AppConfig config) {
         this.tableName = config.tableName();
         this.transport = GrpcTransport.forConnectionString(config.endpoint())
+                .withAuthProvider(CloudAuthHelper.getAuthProviderFromEnviron())
                 .build();
 
         this.tableClient = TableClient.newClient(transport).build();
