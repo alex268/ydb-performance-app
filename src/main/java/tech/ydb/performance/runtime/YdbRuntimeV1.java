@@ -1,48 +1,51 @@
-package tech.ydb.performance.impl;
+package tech.ydb.performance.runtime;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import tech.ydb.auth.iam.CloudAuthHelper;
-import tech.ydb.core.Status;
-import tech.ydb.core.grpc.GrpcTransport;
+import com.yandex.ydb.auth.iam.CloudAuthHelper;
+import com.yandex.ydb.core.Status;
+import com.yandex.ydb.core.grpc.GrpcTransport;
+import com.yandex.ydb.table.Session;
+import com.yandex.ydb.table.SessionRetryContext;
+import com.yandex.ydb.table.TableClient;
+import com.yandex.ydb.table.description.TableDescription;
+import com.yandex.ydb.table.query.DataQueryResult;
+import com.yandex.ydb.table.query.Params;
+import com.yandex.ydb.table.result.ResultSetReader;
+import com.yandex.ydb.table.rpc.grpc.GrpcTableRpc;
+import com.yandex.ydb.table.settings.BulkUpsertSettings;
+import com.yandex.ydb.table.transaction.TxControl;
+import com.yandex.ydb.table.values.ListType;
+import com.yandex.ydb.table.values.PrimitiveType;
+import com.yandex.ydb.table.values.PrimitiveValue;
+import com.yandex.ydb.table.values.StructType;
+import com.yandex.ydb.table.values.Value;
+
 import tech.ydb.performance.AppConfig;
 import tech.ydb.performance.api.AppRecord;
 import tech.ydb.performance.api.YdbRuntime;
-import tech.ydb.table.Session;
-import tech.ydb.table.SessionRetryContext;
-import tech.ydb.table.TableClient;
-import tech.ydb.table.description.TableDescription;
-import tech.ydb.table.query.DataQueryResult;
-import tech.ydb.table.query.Params;
-import tech.ydb.table.result.ResultSetReader;
-import tech.ydb.table.transaction.TxControl;
-import tech.ydb.table.values.ListType;
-import tech.ydb.table.values.PrimitiveType;
-import tech.ydb.table.values.PrimitiveValue;
-import tech.ydb.table.values.StructType;
-import tech.ydb.table.values.Value;
 
 /**
  *
  * @author Aleksandr Gorshenin
  */
-public class YdbRuntimeV2 implements YdbRuntime {
+public class YdbRuntimeV1 implements YdbRuntime {
     private final String tableName;
     private final String tablePath;
     private final GrpcTransport transport;
     private final TableClient tableClient;
     private final SessionRetryContext retryCtx;
 
-    public YdbRuntimeV2(AppConfig config) {
+    public YdbRuntimeV1(AppConfig config) {
         this.tableName = config.tableName();
         this.transport = GrpcTransport.forConnectionString(config.endpoint())
                 .withAuthProvider(CloudAuthHelper.getAuthProviderFromEnviron())
                 .build();
 
-        this.tableClient = TableClient.newClient(transport).build();
+        this.tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport)).build();
         this.retryCtx = SessionRetryContext.create(tableClient).build();
         this.tablePath = transport.getDatabase() + "/" + tableName;
     }
@@ -50,41 +53,44 @@ public class YdbRuntimeV2 implements YdbRuntime {
     @Override
     public void createTable() {
         TableDescription description = TableDescription.newBuilder()
-                .addNullableColumn("uuid", PrimitiveType.Text)
-                .addNullableColumn("payload", PrimitiveType.Bytes)
+                .addNullableColumn("uuid", PrimitiveType.utf8())
+                .addNullableColumn("payload", PrimitiveType.string())
                 .setPrimaryKey("uuid")
                 .build();
         retryCtx.supplyStatus(session -> session.createTable(tablePath, description))
-                .join().expectSuccess("Can't create table");
+                .join().expect("Can't create table");
     }
 
     @Override
     public CompletableFuture<YdbSession> createSession() {
-        return tableClient.createSession(Duration.ofSeconds(1))
+        return tableClient.getOrCreateSession(Duration.ofSeconds(1))
                 .thenApply(r -> r.map(SessionImpl::new)
-                .getValue());
-    }
-
-    @Override
-    public CompletableFuture<Boolean> bulkUpsert(List<AppRecord> records) {
-        StructType type = StructType.of(
-                "uuid", PrimitiveType.Text,
-                "payload", PrimitiveType.Bytes
-        );
-
-        List<Value<?>> values = records.stream().map(r -> type.newValue(
-                "uuid", PrimitiveValue.newText(r.uuid()),
-                "payload", PrimitiveValue.newBytes(r.payload())
-        )).collect(Collectors.toList());
-
-        return retryCtx.supplyStatus(s -> s.executeBulkUpsert(tablePath, ListType.of(type).newValue(values)))
-                .thenApply(Status::isSuccess);
+                .expect("can't create session"));
     }
 
     @Override
     public void close() {
         tableClient.close();
         transport.close();
+    }
+
+    @Override
+    public CompletableFuture<Boolean> bulkUpsert(List<AppRecord> records) {
+        StructType type = StructType.of(
+                "uuid", PrimitiveType.utf8(),
+                "payload", PrimitiveType.string()
+        );
+
+        List<Value> values = records.stream().map(r -> type.newValue(
+                "uuid", PrimitiveValue.utf8(r.uuid()),
+                "payload", PrimitiveValue.string(r.payload())
+        )).collect(Collectors.toList());
+
+        BulkUpsertSettings settings = new BulkUpsertSettings();
+
+        return retryCtx
+                .supplyStatus(s -> s.executeBulkUpsert(tablePath, ListType.of(type).newValue(values), settings))
+                .thenApply(Status::isSuccess);
     }
 
     private class SessionImpl implements YdbSession {
@@ -97,10 +103,10 @@ public class YdbRuntimeV2 implements YdbRuntime {
         @Override
         public CompletableFuture<AppRecord> read(String uuid) {
             String query = "DECLARE $uuid as Text; SELECT uuid, payload FROM " + tableName + " WHERE uuid = $uuid;";
-            Params params = Params.of("$uuid", PrimitiveValue.newText(uuid));
+            Params params = Params.of("$uuid", PrimitiveValue.utf8(uuid));
 
             return session.executeDataQuery(query, TxControl.serializableRw(), params)
-                    .thenApply(r -> r.map(this::readRecord).getValue());
+                    .thenApply(r -> r.map(this::readRecord).expect("can't execute query"));
         }
 
         private AppRecord readRecord(DataQueryResult result) {
@@ -113,8 +119,8 @@ public class YdbRuntimeV2 implements YdbRuntime {
                 return null;
             }
 
-            String uuid = rs.getColumn("uuid").getText();
-            byte[] payload = rs.getColumn("payload").getBytes();
+            String uuid = rs.getColumn("uuid").getUtf8();
+            byte[] payload = rs.getColumn("payload").getString();
             return new AppRecord(uuid, payload);
         }
 
@@ -123,4 +129,5 @@ public class YdbRuntimeV2 implements YdbRuntime {
             session.close();
         }
     }
+
 }

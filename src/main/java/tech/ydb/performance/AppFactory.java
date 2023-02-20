@@ -2,8 +2,8 @@ package tech.ydb.performance;
 
 import tech.ydb.performance.api.Workload;
 import tech.ydb.performance.api.YdbRuntime;
-import tech.ydb.performance.impl.YdbRuntimeV1;
-import tech.ydb.performance.impl.YdbRuntimeV2;
+import tech.ydb.performance.runtime.YdbRuntimeV1;
+import tech.ydb.performance.runtime.YdbRuntimeV2;
 import tech.ydb.performance.workload.LoadWorkload;
 import tech.ydb.performance.workload.ReadWorkload;
 

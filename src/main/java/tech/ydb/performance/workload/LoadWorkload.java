@@ -18,7 +18,8 @@ import tech.ydb.performance.api.AppRecord;
 import tech.ydb.performance.api.Metric;
 import tech.ydb.performance.api.Workload;
 import tech.ydb.performance.api.YdbRuntime;
-import tech.ydb.performance.impl.TimingMetric;
+import tech.ydb.performance.metrics.MetricTimer;
+import tech.ydb.performance.metrics.RequestMetric;
 
 /**
  *
@@ -29,7 +30,8 @@ public class LoadWorkload implements Workload {
 
     private final AppConfig config;
     private final YdbRuntime ydb;
-    private final TimingMetric timing = new TimingMetric();
+    private final RequestMetric metric = new RequestMetric();
+    private final MetricTimer timer = new MetricTimer();
 
     public LoadWorkload(AppConfig config, YdbRuntime ydb) {
         this.config = config;
@@ -38,7 +40,7 @@ public class LoadWorkload implements Workload {
 
     @Override
     public List<Metric> metrics() {
-        return timing.toMetrics("LOAD_");
+        return metric.toMetrics("LOAD", timer);
     }
 
     @Override
@@ -48,7 +50,9 @@ public class LoadWorkload implements Workload {
 
         logger.info("run load workload with {} threads", config.threadsCount());
         ExecutorService executor = Executors.newFixedThreadPool(config.threadsCount(), new NamedThreadFactory("load"));
-        List<CompletableFuture<TimingMetric>> taskTimings = new ArrayList<>();
+        List<CompletableFuture<RequestMetric>> taskTimings = new ArrayList<>();
+
+        timer.start();
 
         long first = 0;
         int perThread = config.recordCount() / config.threadsCount();
@@ -63,7 +67,9 @@ public class LoadWorkload implements Workload {
         logger.info("wait all tasks...");
 
         // collect all timings
-        taskTimings.forEach(future -> timing.record(future.join()));
+        taskTimings.forEach(future -> metric.merge(future.join()));
+
+        timer.finish();
 
         try {
             logger.info("shutdown workload");
@@ -75,7 +81,7 @@ public class LoadWorkload implements Workload {
         }
     }
 
-    private class LoadTask implements Callable<TimingMetric> {
+    private class LoadTask implements Callable<RequestMetric> {
         private final long startID;
         private final long lastID;
 
@@ -85,29 +91,26 @@ public class LoadWorkload implements Workload {
         }
 
         @Override
-        public TimingMetric call() {
-            TimingMetric timing = new TimingMetric();
+        public RequestMetric call() {
+            RequestMetric metric = new RequestMetric();
 
             long idx = startID;
             while (idx < lastID) {
                 long size = Math.min(lastID - idx, config.batchSize());
-                timing.record(bulkUpsert(idx, size));
+                List<AppRecord> batch = LongStream.range(idx, idx + size)
+                        .mapToObj(i -> AppRecord.createByIndex(i, config.recordSize()))
+                        .collect(Collectors.toList());
+
+                long before = System.nanoTime();
+                Boolean ok = ydb.bulkUpsert(batch).join();
+                long after = System.nanoTime();
+                metric.record(ok, after - before);
+
                 idx += size;
             }
 
-            return timing;
+            return metric;
         }
 
-        private long bulkUpsert(long idx, long size) {
-            List<AppRecord> batch = LongStream.range(idx, idx + size)
-                    .mapToObj(i -> AppRecord.createByIndex(i, config.recordSize()))
-                    .collect(Collectors.toList());
-
-            long before = System.nanoTime();
-            ydb.bulkUpsert(batch).join();
-            long after = System.nanoTime();
-
-            return after - before;
-        }
     }
 }

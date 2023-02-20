@@ -1,5 +1,7 @@
 package tech.ydb.performance.api;
 
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.Random;
 import java.util.UUID;
 
@@ -22,6 +24,24 @@ public class AppRecord {
 
     public byte[] payload() {
         return this.payload;
+    }
+
+    @Override
+    public int hashCode() {
+        return uuid.hashCode() * 31 + Arrays.hashCode(payload);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (obj == null || obj.getClass() != getClass()) {
+            return false;
+        }
+
+        AppRecord other = (AppRecord)obj;
+        return Objects.equals(uuid, other.uuid) && Arrays.equals(payload, other.payload);
     }
 
     public static AppRecord createByIndex(long index, int recordSize) {

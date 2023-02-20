@@ -1,6 +1,7 @@
-package tech.ydb.performance.impl;
+package tech.ydb.performance.metrics;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import tech.ydb.performance.api.Metric;
@@ -22,7 +23,7 @@ public class TimingMetric {
         count += 1;
     }
 
-    public void record(TimingMetric other) {
+    void merge(TimingMetric other) {
         summaryTime += other.summaryTime;
         minTime = Math.min(minTime, other.minTime);
         maxTime = Math.max(maxTime, other.maxTime);
@@ -30,6 +31,10 @@ public class TimingMetric {
     }
 
     public List<Metric> toMetrics(String prefix) {
+        if (count == 0) {
+            return Collections.emptyList();
+        }
+
         return Arrays.asList(
                 new Metric(prefix + "TOTAL_COUNT", count),
                 new Metric(prefix + "TOTAL_MS", 1e-6d * summaryTime),

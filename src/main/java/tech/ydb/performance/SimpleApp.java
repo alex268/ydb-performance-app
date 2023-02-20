@@ -38,7 +38,6 @@ public class SimpleApp implements Runnable, AutoCloseable {
     public void run() {
         Workload workload = AppFactory.createWorkload(config, ydb);
         workload.run();
-
         workload.metrics().forEach(m -> {
             logger.info("workload metric {} = {}", m.name(), m.value());
         });
