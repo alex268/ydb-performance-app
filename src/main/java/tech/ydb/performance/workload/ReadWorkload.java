@@ -45,19 +45,8 @@ public class ReadWorkload implements Workload {
         ).collect(Collectors.toList());
     }
 
-    private void warnup() {
-        logger.info("warnup sessions with {} threads", config.threadsCount());
-        List<CompletableFuture<YdbRuntime.YdbSession>> sessions = new ArrayList<>();
-        for (int idx = 0; idx < config.threadsCount(); idx += 1) {
-            sessions.add(ydb.createSession());
-        }
-        sessions.forEach(f -> f.join().close());
-    }
-
     @Override
     public void run() {
-        warnup();
-
         logger.info("run read workload with {} threads", config.threadsCount());
         ExecutorService executor = Executors.newFixedThreadPool(config.threadsCount(), new NamedThreadFactory("read"));
         List<CompletableFuture<Timings>> taskTimings = new ArrayList<>();
