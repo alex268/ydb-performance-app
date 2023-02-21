@@ -1,11 +1,13 @@
 package tech.ydb.performance;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
+import joptsimple.OptionSpecBuilder;
 
 /**
  *
@@ -25,25 +27,25 @@ public class AppConfig {
     }
 
     private final static OptionSpec<Integer> THREADS = PARSER
-            .accepts("threads")
+            .acceptsAll(Arrays.asList("t", "threads"), "Count of threads")
             .withRequiredArg()
             .ofType(Integer.class)
             .defaultsTo(1);
 
     private final static OptionSpec<String> TABLE_NAME = PARSER
-            .accepts("tablename")
+            .accepts("tablename", "Test table name")
             .withRequiredArg()
             .ofType(String.class)
             .defaultsTo("app_record");
 
     private final static OptionSpec<Integer> RECORD_COUNT = PARSER
-            .accepts("recordcount")
+            .acceptsAll(Arrays.asList("rc", "recordcount"), "Count of records in table")
             .withRequiredArg()
             .ofType(Integer.class)
             .defaultsTo(100_000);
 
     private final static OptionSpec<Integer> RECORD_SIZE = PARSER
-            .accepts("recordsize")
+            .accepts("recordsize", "Size of record payload")
             .withRequiredArg()
             .ofType(Integer.class)
             .defaultsTo(100);
@@ -55,16 +57,13 @@ public class AppConfig {
             .defaultsTo(500);
 
     private final static OptionSpec<Long> OPERATION_COUNT = PARSER
-            .accepts("operationcount")
+            .acceptsAll(Arrays.asList("oc", "operationcount"), "Count of operations")
             .withRequiredArg()
             .ofType(Long.class)
             .defaultsTo(100_000l);
 
-    private final static OptionSpec<Boolean> USE_YDB_SDK_V1 = PARSER
-            .accepts("sdk-v1")
-            .withRequiredArg()
-            .ofType(Boolean.class )
-            .defaultsTo(false);
+    private final static OptionSpecBuilder USE_YDB_SDK_V1 = PARSER
+            .accepts("use-sdk-v1");
 
     private final String endpoint;
     private final Cmd cmd;
@@ -85,7 +84,7 @@ public class AppConfig {
         this.recordSize = options.valueOf(RECORD_SIZE);
         this.batchSize = options.valueOf(BATCH_SIZE);
         this.operationsCount = options.valueOf(OPERATION_COUNT);
-        this.useSdkV1 = options.valueOf(USE_YDB_SDK_V1);
+        this.useSdkV1 = options.has(USE_YDB_SDK_V1);
     }
 
     public String endpoint() {
