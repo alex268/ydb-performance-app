@@ -1,6 +1,7 @@
 package tech.ydb.performance;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,8 +39,10 @@ public class SimpleApp implements Runnable, AutoCloseable {
     public void run() {
         Workload workload = AppFactory.createWorkload(config, ydb);
         workload.run();
+
+        DecimalFormat df = new DecimalFormat("0.####");
         workload.metrics().forEach(m -> {
-            logger.info("workload metric {} = {}", m.name(), m.value());
+            logger.info("metric {} = {}", m.name(), df.format(m.value()));
         });
     }
 

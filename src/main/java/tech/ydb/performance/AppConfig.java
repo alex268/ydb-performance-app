@@ -56,11 +56,11 @@ public class AppConfig {
             .ofType(Integer.class)
             .defaultsTo(500);
 
-    private final static OptionSpec<Long> OPERATION_COUNT = PARSER
-            .acceptsAll(Arrays.asList("oc", "operationcount"), "Count of operations")
+    private final static OptionSpec<Integer> TEST_DURATION = PARSER
+            .acceptsAll(Arrays.asList("td", "testduration"), "Test's duration in seconds")
             .withRequiredArg()
-            .ofType(Long.class)
-            .defaultsTo(100_000l);
+            .ofType(Integer.class)
+            .defaultsTo(120);
 
     private final static OptionSpecBuilder DISABLE_WARMUP = PARSER
             .accepts("disable-warnup");
@@ -75,7 +75,7 @@ public class AppConfig {
     private final int recordCount;
     private final int recordSize;
     private final int batchSize;
-    private final long operationsCount;
+    private final int testDurationSeconds;
     private final boolean useSdkV1;
     private final boolean disableWarmup;
 
@@ -87,7 +87,7 @@ public class AppConfig {
         this.recordCount = options.valueOf(RECORD_COUNT);
         this.recordSize = options.valueOf(RECORD_SIZE);
         this.batchSize = options.valueOf(BATCH_SIZE);
-        this.operationsCount = options.valueOf(OPERATION_COUNT);
+        this.testDurationSeconds = options.valueOf(TEST_DURATION);
         this.useSdkV1 = options.has(USE_YDB_SDK_V1);
         this.disableWarmup = options.has(DISABLE_WARMUP);
     }
@@ -120,8 +120,8 @@ public class AppConfig {
         return this.batchSize;
     }
 
-    public long operationsCount() {
-        return this.operationsCount;
+    public int testDurationSeconds() {
+        return this.testDurationSeconds;
     }
 
     public boolean useSdkV1() {

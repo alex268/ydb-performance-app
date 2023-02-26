@@ -25,7 +25,7 @@ import tech.ydb.performance.metrics.ReadMetric;
  * @author Aleksandr Gorshenin
  */
 public class ReadWorkload implements Workload {
-    private static final Logger logger = LoggerFactory.getLogger(LoadWorkload.class);
+    private static final Logger logger = LoggerFactory.getLogger(ReadWorkload.class);
 
     private final AppConfig config;
     private final YdbRuntime ydb;
@@ -57,13 +57,14 @@ public class ReadWorkload implements Workload {
         ExecutorService executor = Executors.newFixedThreadPool(config.threadsCount(), new NamedThreadFactory("read"));
         List<CompletableFuture<ReadMetric>> taskTimings = new ArrayList<>();
 
+        long finishTime = System.currentTimeMillis() + 1000 * config.testDurationSeconds();
         timer.start();
         for (int idx = 0; idx < config.threadsCount(); idx += 1) {
-            ReadTask task = new ReadTask(config.operationsCount() / config.threadsCount());
+            ReadTask task = new ReadTask(finishTime);
             taskTimings.add(CompletableFuture.supplyAsync(task::call, executor));
         }
 
-        logger.info("wait all tasks...");
+        logger.info("wait {}s to finish all threads...", config.testDurationSeconds());
 
         // collect all timings
         taskTimings.forEach(future -> metric.merge(future.join()));
@@ -82,10 +83,10 @@ public class ReadWorkload implements Workload {
 
     private class ReadTask implements Callable<ReadMetric> {
         private final ThreadLocalRandom rnd = ThreadLocalRandom.current();
-        private final long operationsCount;
+        private final long finishTimestamp;
 
-        public ReadTask(long operationsCount) {
-            this.operationsCount = operationsCount;
+        public ReadTask(long finishTimestamp) {
+            this.finishTimestamp = finishTimestamp;
         }
 
         private AppRecord randomRecord() {
@@ -96,7 +97,7 @@ public class ReadWorkload implements Workload {
         public ReadMetric call() {
             ReadMetric timing = new ReadMetric();
 
-            for (long idx = 0; idx < operationsCount; idx += 1) {
+            while (System.currentTimeMillis() < finishTimestamp) {
                 AppRecord record = randomRecord();
 
                 long p0 = System.nanoTime();
@@ -118,7 +119,6 @@ public class ReadWorkload implements Workload {
                         long p2 = System.nanoTime();
                         timing.recordReadData(false, p2 - p1);
                     }
-
                 } catch (RuntimeException ex) {
                     long p1 = System.nanoTime();
                     timing.recordGetSession(false, p1 - p0);
