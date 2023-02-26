@@ -60,7 +60,7 @@ public class YdbRuntimeV2 implements YdbRuntime {
 
     @Override
     public CompletableFuture<YdbSession> createSession() {
-        return tableClient.createSession(Duration.ofSeconds(1))
+        return tableClient.createSession(Duration.ofSeconds(5))
                 .thenApply(r -> r.map(SessionImpl::new)
                 .getValue());
     }

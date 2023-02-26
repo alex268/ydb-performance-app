@@ -62,6 +62,9 @@ public class AppConfig {
             .ofType(Long.class)
             .defaultsTo(100_000l);
 
+    private final static OptionSpecBuilder DISABLE_WARMUP = PARSER
+            .accepts("disable-warnup");
+
     private final static OptionSpecBuilder USE_YDB_SDK_V1 = PARSER
             .accepts("use-sdk-v1");
 
@@ -74,6 +77,7 @@ public class AppConfig {
     private final int batchSize;
     private final long operationsCount;
     private final boolean useSdkV1;
+    private final boolean disableWarmup;
 
     private AppConfig(String endpoint, Cmd cmd, OptionSet options) {
         this.endpoint = endpoint;
@@ -85,6 +89,7 @@ public class AppConfig {
         this.batchSize = options.valueOf(BATCH_SIZE);
         this.operationsCount = options.valueOf(OPERATION_COUNT);
         this.useSdkV1 = options.has(USE_YDB_SDK_V1);
+        this.disableWarmup = options.has(DISABLE_WARMUP);
     }
 
     public String endpoint() {
@@ -121,6 +126,10 @@ public class AppConfig {
 
     public boolean useSdkV1() {
         return this.useSdkV1;
+    }
+
+    public boolean warmupIsDisabled() {
+        return this.disableWarmup;
     }
 
     public static AppConfig parseArgs(String... args) {
