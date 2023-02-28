@@ -17,6 +17,7 @@ public class AppConfig {
     public enum Cmd {
         LOAD,
         READ,
+        MULTIREAD,
         REACT,
     }
 

@@ -8,6 +8,7 @@ import tech.ydb.performance.api.YdbRuntime;
 import tech.ydb.performance.runtime.YdbRuntimeV1;
 import tech.ydb.performance.runtime.YdbRuntimeV2;
 import tech.ydb.performance.workload.LoadWorkload;
+import tech.ydb.performance.workload.MultiReadWorkload;
 import tech.ydb.performance.workload.ReadWorkload;
 
 /**
@@ -25,6 +26,8 @@ public class AppFactory {
                 return new LoadWorkload(config, runtime);
             case READ:
                 return new ReadWorkload(config, runtime);
+            case MULTIREAD:
+                return new MultiReadWorkload(config, runtime);
             case REACT:
             default:
                 throw new RuntimeException("Unimplemented");

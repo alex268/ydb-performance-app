@@ -17,29 +17,29 @@ import tech.ydb.performance.api.AppRecord;
 import tech.ydb.performance.api.Metric;
 import tech.ydb.performance.api.Workload;
 import tech.ydb.performance.api.YdbRuntime;
-import tech.ydb.performance.metrics.MetricTimer;
+import tech.ydb.performance.metrics.NanoTimer;
 import tech.ydb.performance.metrics.ReadMetric;
 
 /**
  *
  * @author Aleksandr Gorshenin
  */
-public class ReadWorkload implements Workload {
-    private static final Logger logger = LoggerFactory.getLogger(ReadWorkload.class);
+public class MultiReadWorkload implements Workload {
+    private static final Logger logger = LoggerFactory.getLogger(MultiReadWorkload.class);
+    private static final int READ_COUNT = 10;
 
     private final AppConfig config;
     private final YdbRuntime ydb;
     private final ReadMetric metric = new ReadMetric();
-    private final MetricTimer timer = new MetricTimer();
 
-    public ReadWorkload(AppConfig config, YdbRuntime ydb) {
+    public MultiReadWorkload(AppConfig config, YdbRuntime ydb) {
         this.config = config;
         this.ydb = ydb;
     }
 
     @Override
     public List<Metric> metrics() {
-        return metric.toMetrics(timer);
+        return metric.toMetrics();
     }
 
     @Override
@@ -53,12 +53,12 @@ public class ReadWorkload implements Workload {
             sessions.forEach(future -> future.join().close());
         }
 
-        logger.info("run read workload with {} threads", config.threadsCount());
-        ExecutorService executor = Executors.newFixedThreadPool(config.threadsCount(), new NamedThreadFactory("read"));
+        logger.info("run multi read workload with {} threads", config.threadsCount());
+        ExecutorService executor = Executors.newFixedThreadPool(config.threadsCount(), new NamedThreadFactory("mread"));
         List<CompletableFuture<ReadMetric>> taskTimings = new ArrayList<>();
 
         long finishTime = System.currentTimeMillis() + 1000 * config.testDurationSeconds();
-        timer.start();
+        metric.start();
         for (int idx = 0; idx < config.threadsCount(); idx += 1) {
             ReadTask task = new ReadTask(finishTime);
             taskTimings.add(CompletableFuture.supplyAsync(task::call, executor));
@@ -69,7 +69,7 @@ public class ReadWorkload implements Workload {
         // collect all timings
         taskTimings.forEach(future -> metric.merge(future.join()));
 
-        timer.finish();
+        metric.finish();
 
         try {
             logger.info("shutdown workload");
@@ -95,38 +95,37 @@ public class ReadWorkload implements Workload {
 
         @Override
         public ReadMetric call() {
-            ReadMetric timing = new ReadMetric();
+            ReadMetric metric = new ReadMetric();
+            NanoTimer timer = new NanoTimer();
 
             while (System.currentTimeMillis() < finishTimestamp) {
-                AppRecord record = randomRecord();
-
-                long p0 = System.nanoTime();
+                timer.next();
                 try (YdbRuntime.YdbSession session = ydb.createSession().join()) {
-                    long p1 = System.nanoTime();
-                    timing.recordGetSession(true, p1 - p0);
+                    metric.recordGetSession(true, timer.next());
 
-                    try {
-                        AppRecord readed = session.read(record.uuid()).join();
-                        long p2 = System.nanoTime();
-                        timing.recordReadData(true, p2 - p1);
+                    for (int readNumber = 0; readNumber < READ_COUNT; readNumber += 1) {
+                        AppRecord record = randomRecord();
+                        timer.next();
+                        try {
+                            AppRecord readed = session.read(record.uuid()).join();
+                            metric.recordReadData(true, timer.next());
 
-                        if (!record.equals(readed)) {
-                            logger.error("readed wrong record");
+                            if (!record.equals(readed)) {
+                                logger.error("readed wrong record");
+                            }
+                        } catch (RuntimeException ex) {
+                            metric.recordReadData(false, timer.next());
                         }
-
-                        timing.requestInc();
-                    } catch (RuntimeException ex) {
-                        long p2 = System.nanoTime();
-                        timing.recordReadData(false, p2 - p1);
                     }
+
+                    metric.requestInc();
                 } catch (RuntimeException ex) {
-                    long p1 = System.nanoTime();
-                    timing.recordGetSession(false, p1 - p0);
+                    metric.recordGetSession(false, timer.next());
                     logger.warn("can't read record {}", ex.getMessage());
                 }
             }
 
-            return timing;
+            return metric;
         }
     }
 
