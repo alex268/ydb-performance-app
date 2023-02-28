@@ -126,7 +126,7 @@ public class YdbRuntimeV1 implements YdbRuntime {
 
         @Override
         public void close() {
-            session.close();
+            session.release();
         }
     }
 
