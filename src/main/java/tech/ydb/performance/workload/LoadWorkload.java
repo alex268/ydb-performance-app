@@ -18,7 +18,7 @@ import tech.ydb.performance.api.AppRecord;
 import tech.ydb.performance.api.Metric;
 import tech.ydb.performance.api.Workload;
 import tech.ydb.performance.api.YdbRuntime;
-import tech.ydb.performance.metrics.MetricTimer;
+import tech.ydb.performance.metrics.NanoTimer;
 import tech.ydb.performance.metrics.RequestMetric;
 
 /**
@@ -31,7 +31,6 @@ public class LoadWorkload implements Workload {
     private final AppConfig config;
     private final YdbRuntime ydb;
     private final RequestMetric metric = new RequestMetric();
-    private final MetricTimer timer = new MetricTimer();
 
     public LoadWorkload(AppConfig config, YdbRuntime ydb) {
         this.config = config;
@@ -40,7 +39,7 @@ public class LoadWorkload implements Workload {
 
     @Override
     public List<Metric> metrics() {
-        return metric.toMetrics("LOAD", timer);
+        return metric.toMetrics("LOAD");
     }
 
     @Override
@@ -51,8 +50,6 @@ public class LoadWorkload implements Workload {
         logger.info("run load workload with {} threads", config.threadsCount());
         ExecutorService executor = Executors.newFixedThreadPool(config.threadsCount(), new NamedThreadFactory("load"));
         List<CompletableFuture<RequestMetric>> taskTimings = new ArrayList<>();
-
-        timer.start();
 
         long first = 0;
         int perThread = config.recordCount() / config.threadsCount();
@@ -68,8 +65,6 @@ public class LoadWorkload implements Workload {
 
         // collect all timings
         taskTimings.forEach(future -> metric.merge(future.join()));
-
-        timer.finish();
 
         try {
             logger.info("shutdown workload");
@@ -93,6 +88,7 @@ public class LoadWorkload implements Workload {
         @Override
         public RequestMetric call() {
             RequestMetric metric = new RequestMetric();
+            NanoTimer timer = new NanoTimer();
 
             long idx = startID;
             while (idx < lastID) {
@@ -101,10 +97,9 @@ public class LoadWorkload implements Workload {
                         .mapToObj(i -> AppRecord.createByIndex(i, config.recordSize()))
                         .collect(Collectors.toList());
 
-                long before = System.nanoTime();
+                timer.next();
                 Boolean ok = ydb.bulkUpsert(batch).join();
-                long after = System.nanoTime();
-                metric.record(ok, after - before);
+                metric.record(ok, timer.next());
 
                 idx += size;
             }

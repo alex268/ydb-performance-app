@@ -27,7 +27,7 @@ public class RequestMetric {
         errors.merge(other.errors);
     }
 
-    public List<Metric> toMetrics(String name, MetricTimer timer) {
+    public List<Metric> toMetrics(String name) {
         return Stream.of(
                 oks.toMetrics(name + "_OK_"),
                 errors.toMetrics(name + "_ERROR_")

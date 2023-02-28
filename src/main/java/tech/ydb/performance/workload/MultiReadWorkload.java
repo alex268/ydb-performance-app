@@ -17,7 +17,7 @@ import tech.ydb.performance.api.AppRecord;
 import tech.ydb.performance.api.Metric;
 import tech.ydb.performance.api.Workload;
 import tech.ydb.performance.api.YdbRuntime;
-import tech.ydb.performance.metrics.NanoTimer;
+import tech.ydb.performance.metrics.MetricTimer;
 import tech.ydb.performance.metrics.ReadMetric;
 
 /**
@@ -30,6 +30,7 @@ public class ReadWorkload implements Workload {
     private final AppConfig config;
     private final YdbRuntime ydb;
     private final ReadMetric metric = new ReadMetric();
+    private final MetricTimer timer = new MetricTimer();
 
     public ReadWorkload(AppConfig config, YdbRuntime ydb) {
         this.config = config;
@@ -38,7 +39,7 @@ public class ReadWorkload implements Workload {
 
     @Override
     public List<Metric> metrics() {
-        return metric.toMetrics();
+        return metric.toMetrics(timer);
     }
 
     @Override
@@ -57,7 +58,7 @@ public class ReadWorkload implements Workload {
         List<CompletableFuture<ReadMetric>> taskTimings = new ArrayList<>();
 
         long finishTime = System.currentTimeMillis() + 1000 * config.testDurationSeconds();
-        metric.start();
+        timer.start();
         for (int idx = 0; idx < config.threadsCount(); idx += 1) {
             ReadTask task = new ReadTask(finishTime);
             taskTimings.add(CompletableFuture.supplyAsync(task::call, executor));
@@ -68,7 +69,7 @@ public class ReadWorkload implements Workload {
         // collect all timings
         taskTimings.forEach(future -> metric.merge(future.join()));
 
-        metric.finish();
+        timer.finish();
 
         try {
             logger.info("shutdown workload");
@@ -95,18 +96,19 @@ public class ReadWorkload implements Workload {
         @Override
         public ReadMetric call() {
             ReadMetric timing = new ReadMetric();
-            NanoTimer timer = new NanoTimer();
 
             while (System.currentTimeMillis() < finishTimestamp) {
-                timer.next();
-                try (YdbRuntime.YdbSession session = ydb.createSession().join()) {
-                    timing.recordGetSession(true, timer.next());
+                AppRecord record = randomRecord();
 
-                    AppRecord record = randomRecord();
-                    timer.next();
+                long p0 = System.nanoTime();
+                try (YdbRuntime.YdbSession session = ydb.createSession().join()) {
+                    long p1 = System.nanoTime();
+                    timing.recordGetSession(true, p1 - p0);
+
                     try {
                         AppRecord readed = session.read(record.uuid()).join();
-                        timing.recordReadData(true, timer.next());
+                        long p2 = System.nanoTime();
+                        timing.recordReadData(true, p2 - p1);
 
                         if (!record.equals(readed)) {
                             logger.error("readed wrong record");
@@ -114,10 +116,12 @@ public class ReadWorkload implements Workload {
 
                         timing.requestInc();
                     } catch (RuntimeException ex) {
-                        timing.recordReadData(false, timer.next());
+                        long p2 = System.nanoTime();
+                        timing.recordReadData(false, p2 - p1);
                     }
                 } catch (RuntimeException ex) {
-                    timing.recordGetSession(false, timer.next());
+                    long p1 = System.nanoTime();
+                    timing.recordGetSession(false, p1 - p0);
                     logger.warn("can't read record {}", ex.getMessage());
                 }
             }

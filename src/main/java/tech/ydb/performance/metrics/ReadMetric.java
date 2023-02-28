@@ -16,6 +16,18 @@ public class ReadMetric {
     private final RequestMetric getSession = new RequestMetric();
     private final RequestMetric readData = new RequestMetric();
 
+    private long started = System.currentTimeMillis();
+    private long finished = started + 1;
+
+    public void start() {
+        started = System.currentTimeMillis();
+        finished = started + 1;
+    }
+
+    public void finish() {
+        finished = System.currentTimeMillis();
+    }
+
     public void requestInc() {
         counter.inc();
     }
@@ -34,11 +46,11 @@ public class ReadMetric {
         readData.merge(other.readData);
     }
 
-    public List<Metric> toMetrics(MetricTimer timer) {
+    public List<Metric> toMetrics() {
         return Stream.of(
-                counter.toMetrics(timer.durationMS(), "REQUESTS_"),
-                getSession.toMetrics("GET_SESSION", timer),
-                readData.toMetrics("READ_DATA", timer)
+                counter.toMetrics(finished - started, "REQUESTS_"),
+                getSession.toMetrics("GET_SESSION"),
+                readData.toMetrics("READ_DATA")
         ).flatMap(List::stream).collect(Collectors.toList());
     }
 }
