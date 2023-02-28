@@ -48,7 +48,7 @@ public class AppConfig {
             .accepts("recordsize", "Size of record payload")
             .withRequiredArg()
             .ofType(Integer.class)
-            .defaultsTo(100);
+            .defaultsTo(1000);
 
     private final static OptionSpec<Integer> BATCH_SIZE = PARSER
             .accepts("batchsize")
