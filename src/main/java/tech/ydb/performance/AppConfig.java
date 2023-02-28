@@ -42,13 +42,13 @@ public class AppConfig {
             .acceptsAll(Arrays.asList("rc", "recordcount"), "Count of records in table")
             .withRequiredArg()
             .ofType(Integer.class)
-            .defaultsTo(100_000);
+            .defaultsTo(1_000_000);
 
     private final static OptionSpec<Integer> RECORD_SIZE = PARSER
             .accepts("recordsize", "Size of record payload")
             .withRequiredArg()
             .ofType(Integer.class)
-            .defaultsTo(1000);
+            .defaultsTo(2000);
 
     private final static OptionSpec<Integer> BATCH_SIZE = PARSER
             .accepts("batchsize")
