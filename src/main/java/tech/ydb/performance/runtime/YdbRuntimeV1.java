@@ -45,7 +45,9 @@ public class YdbRuntimeV1 implements YdbRuntime {
                 .withAuthProvider(CloudAuthHelper.getAuthProviderFromEnviron())
                 .build();
 
-        this.tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport)).build();
+        this.tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport))
+                .sessionPoolSize(0, Math.max(2, config.threadsCount()))
+                .build();
         this.retryCtx = SessionRetryContext.create(tableClient).build();
         this.tablePath = transport.getDatabase() + "/" + tableName;
     }
