@@ -40,7 +40,7 @@ public class AppConfig {
             .defaultsTo("app_record");
 
     private final static OptionSpec<Integer> RECORD_COUNT = PARSER
-            .acceptsAll(Arrays.asList("rc", "recordcount"), "Count of records in table")
+            .acceptsAll(Arrays.asList("r", "recordcount"), "Count of records in table")
             .withRequiredArg()
             .ofType(Integer.class)
             .defaultsTo(1_000_000);
@@ -58,10 +58,15 @@ public class AppConfig {
             .defaultsTo(500);
 
     private final static OptionSpec<Integer> TEST_DURATION = PARSER
-            .acceptsAll(Arrays.asList("td", "testduration"), "Test's duration in seconds")
+            .acceptsAll(Arrays.asList("d", "testduration"), "Test's duration in seconds")
             .withRequiredArg()
             .ofType(Integer.class)
             .defaultsTo(120);
+
+    private final static OptionSpec<String> SCRIPT_FILE = PARSER
+            .accepts("script")
+            .withOptionalArg()
+            .ofType(String.class);
 
     private final static OptionSpecBuilder DISABLE_WARMUP = PARSER
             .accepts("disable-warnup");
@@ -72,6 +77,7 @@ public class AppConfig {
     private final String endpoint;
     private final Cmd cmd;
     private final String tableName;
+    private final String scriptFile;
     private final int threadsCount;
     private final int recordCount;
     private final int recordSize;
@@ -91,6 +97,7 @@ public class AppConfig {
         this.testDurationSeconds = options.valueOf(TEST_DURATION);
         this.useSdkV1 = options.has(USE_YDB_SDK_V1);
         this.disableWarmup = options.has(DISABLE_WARMUP);
+        this.scriptFile = options.valueOf(SCRIPT_FILE);
     }
 
     public String endpoint() {
@@ -103,6 +110,10 @@ public class AppConfig {
 
     public String tableName() {
         return this.tableName;
+    }
+
+    public String scriptFile() {
+        return this.scriptFile;
     }
 
     public int threadsCount() {

@@ -116,7 +116,7 @@
                         <manifest>
                             <addClasspath>true</addClasspath>
                             <classpathPrefix>libs/</classpathPrefix>
-                            <mainClass>tech.ydb.performance.SimpleApp</mainClass>
+                            <mainClass>tech.ydb.performance.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

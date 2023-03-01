@@ -1,11 +1,12 @@
 package tech.ydb.performance;
 
-import java.io.IOException;
 import java.text.DecimalFormat;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import tech.ydb.performance.api.Metric;
 import tech.ydb.performance.api.Workload;
 import tech.ydb.performance.api.YdbRuntime;
 
@@ -13,19 +14,8 @@ import tech.ydb.performance.api.YdbRuntime;
  *
  * @author Aleksandr Gorshenin
  */
-public class SimpleApp implements Runnable, AutoCloseable {
+public class SimpleApp implements AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(SimpleApp.class);
-
-    public static void main(String... args) throws IOException {
-        logger.info("start app");
-        AppConfig config = AppConfig.parseArgs(args);
-        try (SimpleApp app = new SimpleApp(config)) {
-            app.run();
-        } catch (Exception e) {
-            logger.error("app problem", e);
-        }
-        logger.info("app finised");
-    }
 
     private final AppConfig config;
     private final YdbRuntime ydb;
@@ -35,15 +25,16 @@ public class SimpleApp implements Runnable, AutoCloseable {
         this.ydb = AppFactory.createYdbRuntime(config);
     }
 
-    @Override
-    public void run() {
+    public List<Metric> run() {
         Workload workload = AppFactory.createWorkload(config, ydb);
         workload.run();
 
-        DecimalFormat df = new DecimalFormat("0.####");
+        DecimalFormat df = new DecimalFormat("0.#####");
         workload.metrics().forEach(m -> {
             logger.info("metric {} = {}", m.name(), df.format(m.value()));
         });
+
+        return workload.metrics();
     }
 
     @Override
