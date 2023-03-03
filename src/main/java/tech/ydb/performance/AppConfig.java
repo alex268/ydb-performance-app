@@ -18,7 +18,7 @@ public class AppConfig {
         LOAD,
         READ,
         MULTIREAD,
-        REACT,
+        REACTIVE,
     }
 
     private final static OptionParser PARSER = new OptionParser();
