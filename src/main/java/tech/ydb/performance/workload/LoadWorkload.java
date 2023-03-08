@@ -7,6 +7,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
@@ -53,10 +54,12 @@ public class LoadWorkload implements Workload {
 
         long first = 0;
         int perThread = config.recordCount() / config.threadsCount();
+        long lastBulk = config.recordCount() / config.batchSize();
+        AtomicInteger bulkCounter = new AtomicInteger(0);
         for (int idx = 1; idx <= config.threadsCount(); idx += 1) {
             long last = config.recordCount() - perThread * (config.threadsCount() - idx);
 
-            LoadTask task = new LoadTask(first, last);
+            LoadTask task = new LoadTask(first, last, bulkCounter, lastBulk);
             taskTimings.add(CompletableFuture.supplyAsync(task::call, executor));
             first = last;
         }
@@ -79,10 +82,14 @@ public class LoadWorkload implements Workload {
     private class LoadTask implements Callable<RequestMetric> {
         private final long startID;
         private final long lastID;
+        private final AtomicInteger bulkCounter;
+        private final long lastBulk;
 
-        public LoadTask(long startID, long lastID) {
+        public LoadTask(long startID, long lastID, AtomicInteger bulkCounter, long lastBulk) {
             this.startID = startID;
             this.lastID = lastID;
+            this.bulkCounter = bulkCounter;
+            this.lastBulk = lastBulk;
         }
 
         @Override
@@ -101,6 +108,7 @@ public class LoadWorkload implements Workload {
                 Boolean ok = ydb.bulkUpsert(batch).join();
                 metric.record(ok, timer.next());
 
+                logger.info("writed {}/{} bulks", bulkCounter.incrementAndGet(), lastBulk);
                 idx += size;
             }
 
