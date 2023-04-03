@@ -5,7 +5,11 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import tech.ydb.auth.iam.CloudAuthHelper;
+import tech.ydb.core.Result;
 import tech.ydb.core.Status;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.performance.AppConfig;
@@ -30,6 +34,8 @@ import tech.ydb.table.values.Value;
  * @author Aleksandr Gorshenin
  */
 public class YdbRuntimeV2 implements YdbRuntime {
+    private final static Logger logger = LoggerFactory.getLogger(YdbRuntimeV2.class);
+
     private final String tableName;
     private final String tablePath;
     private final GrpcTransport transport;
@@ -102,16 +108,28 @@ public class YdbRuntimeV2 implements YdbRuntime {
             Params params = Params.of("$uuid", PrimitiveValue.newText(uuid));
 
             return session.executeDataQuery(query, TxControl.serializableRw(), params)
-                    .thenApply(r -> r.map(this::readRecord).getValue());
+                    .thenApply(this::readRecord);
         }
 
-        private AppRecord readRecord(DataQueryResult result) {
-            if (result.isEmpty()) {
+        private AppRecord readRecord(Result<DataQueryResult> result) {
+            if (result == null) {
+                logger.warn("got null data query result");
                 return null;
             }
 
-            ResultSetReader rs = result.getResultSet(0);
+            if (!result.isSuccess()) {
+                logger.warn("got {} status ", result.getStatus().getCode());
+                return null;
+            }
+
+            if (result.getValue().getResultSetCount() == 0) {
+                logger.warn("got empty result set");
+                return null;
+            }
+
+            ResultSetReader rs = result.getValue().getResultSet(0);
             if (!rs.next()) {
+                logger.warn("got result set without rows");
                 return null;
             }
 

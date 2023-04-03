@@ -6,6 +6,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import com.yandex.ydb.auth.iam.CloudAuthHelper;
+import com.yandex.ydb.core.Result;
 import com.yandex.ydb.core.Status;
 import com.yandex.ydb.core.grpc.GrpcTransport;
 import com.yandex.ydb.table.Session;
@@ -23,6 +24,8 @@ import com.yandex.ydb.table.values.PrimitiveType;
 import com.yandex.ydb.table.values.PrimitiveValue;
 import com.yandex.ydb.table.values.StructType;
 import com.yandex.ydb.table.values.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import tech.ydb.performance.AppConfig;
 import tech.ydb.performance.api.AppRecord;
@@ -33,6 +36,8 @@ import tech.ydb.performance.api.YdbRuntime;
  * @author Aleksandr Gorshenin
  */
 public class YdbRuntimeV1 implements YdbRuntime {
+    private final static Logger logger = LoggerFactory.getLogger(YdbRuntimeV1.class);
+
     private final String tableName;
     private final String tablePath;
     private final GrpcTransport transport;
@@ -108,16 +113,28 @@ public class YdbRuntimeV1 implements YdbRuntime {
             Params params = Params.of("$uuid", PrimitiveValue.utf8(uuid));
 
             return session.executeDataQuery(query, TxControl.serializableRw(), params)
-                    .thenApply(r -> r.map(this::readRecord).expect("can't execute query"));
+                    .thenApply(this::readRecord);
         }
 
-        private AppRecord readRecord(DataQueryResult result) {
-            if (result.isEmpty()) {
+        private AppRecord readRecord(Result<DataQueryResult> result) {
+            if (result == null) {
+                logger.warn("got null data query result");
                 return null;
             }
 
-            ResultSetReader rs = result.getResultSet(0);
+            if (!result.isSuccess()) {
+                logger.warn("got {} status ", result.getCode());
+                return null;
+            }
+
+            if (result.expect("").getResultSetCount() == 0) {
+                logger.warn("got empty result set");
+                return null;
+            }
+
+            ResultSetReader rs = result.expect("").getResultSet(0);
             if (!rs.next()) {
+                logger.warn("got result set without rows");
                 return null;
             }
 

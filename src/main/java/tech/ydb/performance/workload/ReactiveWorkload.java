@@ -126,23 +126,24 @@ public class ReactiveWorkload implements Workload {
             final NanoTimer timer = new NanoTimer();
             final ReadMetric metric = new ReadMetric();
             ydb.createSession().whenCompleteAsync((session, th1) -> {
-                metric.recordGetSession(th1 == null, timer.next());
+                metric.recordGetSession(th1 == null && session != null, timer.next());
                 if (session == null) {
                     complete(metric);
                     return;
                 }
 
-                AppRecord record = randomRecord();
+                final AppRecord record = randomRecord();
                 timer.next();
                 session.read(record.uuid()).whenCompleteAsync((readed, th2) -> {
-                    metric.recordReadData(th2 == null, timer.next());
-                    if (!record.equals(readed)) {
-                        logger.error("readed wrong record");
+                    metric.recordReadData(th2 == null && readed != null, timer.next());
+                    if (readed != null) {
+                        if (!record.equals(readed)) {
+                            logger.error("readed wrong record");
+                        }
+                        metric.requestInc();
                     }
 
-                    metric.requestInc();
                     complete(metric);
-
                     session.close();
                 }, executor);
             }, executor);
