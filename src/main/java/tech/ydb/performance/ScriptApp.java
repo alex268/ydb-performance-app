@@ -24,6 +24,23 @@ import tech.ydb.performance.api.Metric;
 public class ScriptApp implements AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(ScriptApp.class);
 
+    private static final DecimalFormat DF = new DecimalFormat("0.#####");
+    private static final String[] COLUMNS = {
+        "REQUESTS_TOTAL_COUNT",
+        "REQUESTS_TOTAL_MS",
+        "REQUESTS_COUNT_PER_SECOND",
+        "GET_SESSION_OK_TOTAL_COUNT",
+        "GET_SESSION_OK_TOTAL_MS",
+        "GET_SESSION_OK_AVG_MS",
+        "GET_SESSION_OK_MIN_MS",
+        "GET_SESSION_OK_MAX_MS",
+        "READ_DATA_OK_TOTAL_COUNT",
+        "READ_DATA_OK_TOTAL_MS",
+        "READ_DATA_OK_AVG_MS",
+        "READ_DATA_OK_MIN_MS",
+        "READ_DATA_OK_MAX_MS"
+    };
+
     private final String[] baseArgs;
     private final Scanner scanner;
 
@@ -33,64 +50,30 @@ public class ScriptApp implements AutoCloseable {
     }
 
     public void run() {
-        logger.info("read columns...");
-        if (!scanner.hasNext()) {
-            logger.error("script file must contain column list");
-            return;
-        }
-
-        String[] columns = scanner.nextLine().split(";");
-        for (String column: columns) {
-            logger.info("  add column '{}'", column);
-        }
-
-        List<double[]> values = new ArrayList<>();
+        List<Step> steps = new ArrayList<>();
 
         while (scanner.hasNext()) {
-            String[] extraArgs = scanner.nextLine().split(";");
-            String[] args = new String[baseArgs.length + extraArgs.length];
-            System.arraycopy(baseArgs, 0, args, 0, baseArgs.length);
-            System.arraycopy(extraArgs, 0, args, baseArgs.length, extraArgs.length);
+            String line = scanner.nextLine();
+            if (line == null || line.isEmpty()) {
+                continue;
+            }
 
-            try (SimpleApp app = new SimpleApp(AppConfig.parseArgs(args))) {
-                logger.info("run next app");
-
-                Map<String, Double> appMetrics = app.run().stream()
-                        .collect(Collectors.toMap(Metric::name, Metric::value));
-
-                double appValues[] = new double[columns.length];
-
-                for (int idx = 0; idx < columns.length; idx += 1) {
-                    Double v = appMetrics.remove(columns[idx]);
-                    if (v == null) {
-                        logger.warn("empty metric {}, put zero", columns[idx]);
-                        v = 0d;
-                    }
-                    appValues[idx] = v;
-                }
-
-                for (String metricName: appMetrics.keySet()) {
-                    logger.warn("not used metric {}", metricName);
-                }
-
-                values.add(appValues);
+            if (line.startsWith("label:")) {
+                steps.add(new LabelStep(line));
+            } else {
+                steps.add(new ValuesStep(line));
             }
         }
 
-        StringBuilder csv = new StringBuilder();
-        DecimalFormat df = new DecimalFormat("0.#####");
+        steps.forEach(Step::run);
 
-        for (String column: columns) {
+        StringBuilder csv = new StringBuilder();
+
+        for (String column: COLUMNS) {
             csv.append(column).append(";");
         }
         csv.append("\n");
-
-        for (double[] appValues: values) {
-            for (double v: appValues) {
-                csv.append(df.format(v)).append(";");
-            }
-            csv.append("\n");
-        }
+        steps.forEach(s -> s.write(csv));
 
         logger.info("exported CSV\n{}", csv.toString());
     }
@@ -98,5 +81,70 @@ public class ScriptApp implements AutoCloseable {
     @Override
     public void close() {
         this.scanner.close();
+    }
+
+    private interface Step extends Runnable {
+        void write(StringBuilder sb);
+    }
+
+    private class LabelStep implements Step {
+        private final String label;
+
+        public LabelStep(String line) {
+            this.label = line.substring(6); // remove prefix label:
+        }
+
+        @Override
+        public void write(StringBuilder sb) {
+            sb.append(label).append("\n");
+        }
+
+        @Override
+        public void run() {
+        }
+    }
+
+    private class ValuesStep implements Step {
+        private final double[] values = new double[COLUMNS.length];
+        private final String[] args;
+
+        public ValuesStep(String line) {
+            String[] extraArgs = line.split("\\s+");
+
+            this.args = new String[baseArgs.length + extraArgs.length];
+            System.arraycopy(baseArgs, 0, args, 0, baseArgs.length);
+            System.arraycopy(extraArgs, 0, args, baseArgs.length, extraArgs.length);
+        }
+
+        @Override
+        public void run() {
+            try (SimpleApp app = new SimpleApp(AppConfig.parseArgs(args))) {
+                logger.info("run next app");
+
+                Map<String, Double> appMetrics = app.run().stream()
+                        .collect(Collectors.toMap(Metric::name, Metric::value));
+
+                for (int idx = 0; idx < COLUMNS.length; idx += 1) {
+                    Double v = appMetrics.remove(COLUMNS[idx]);
+                    if (v == null) {
+                        logger.warn("empty metric {}, put zero", COLUMNS[idx]);
+                        v = 0d;
+                    }
+                    values[idx] = v;
+                }
+
+                for (String metricName: appMetrics.keySet()) {
+                    logger.warn("not used metric {}", metricName);
+                }
+            }
+        }
+
+        @Override
+        public void write(StringBuilder sb) {
+            for (double v: values) {
+                sb.append(DF.format(v)).append(";");
+            }
+            sb.append("\n");
+        }
     }
 }

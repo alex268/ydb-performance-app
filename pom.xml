@@ -73,6 +73,13 @@
                 <groupId>com.yandex.ydb</groupId>
                 <artifactId>ydb-sdk-auth-iam</artifactId>
                 <version>${ydb-sdk-v1.version}</version>
+
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.yandex.cloud</groupId>
+                        <artifactId>java-sdk-auth</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
 
             <dependency>
