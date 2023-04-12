@@ -5,7 +5,7 @@ package tech.ydb.performance.metrics;
  * @author Aleksandr Gorshenin
  */
 public class NanoTimer {
-    private long currentNanoTime = System.nanoTime();
+    private volatile long currentNanoTime = System.nanoTime();
 
     public long next() {
         long old = currentNanoTime;
